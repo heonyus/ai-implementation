@@ -28,9 +28,9 @@ class ScaledDotProductAttention(nn.Module):
             scores = scores.masked_fill(mask == 0, -1e9)
 
         attention_weights = F.softmax(scores, dim=-1)
-        output = torch.matmul(attention_weights, value)
+        attention_output = torch.matmul(attention_weights, value)
 
-        return output, attention_weights
+        return attention_output, attention_weights
 
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_model, num_heads):
@@ -54,10 +54,23 @@ class MultiHeadAttention(nn.Module):
 
         # Linear 변환 적용
         Q = self.W_q(query) # (batch_size, seq_len, d_model)
+        K = self.W_k(key)
+        V = self.W_v(value)
 
+        # Multi-head로 분할 (reshape)
+        Q = Q.view(batch_size, -1, self.num_heads, self.d_k).transpose(1, 2)
+        K = K.view(batch_size, -1, self.num_heads, self.d_k).transpose(1, 2)
+        V = V.view(batch_size, -1, self.num_heads, self.d_k).transpose(1, 2)
 
+        # ScaledDotProductAttention 적용
+        attention_output, attention_weights = self.attention(Q, K, V, mask)
 
-        
+        # Multi-head 결과를 다시 결합 (concatenate)
+        attention_output = attention_output.transpose(1, 2).contiguous().view(
+            batch_size, -1, self.d_model
+        )
 
+        # 최종 출력 변환
+        output = self.W_o(attention_output)
 
-
+        return output, attention_weights
