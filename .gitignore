@@ -118,3 +118,4 @@ dmypy.json
 # *.h5
 # *.pt
 # *.pth
+Transformer/decoder_only_ckpt.pt
